@@ -18,47 +18,52 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CreateCategory } from '../_actions/categories';
 import { Category } from '@/lib/generated/prisma';
 import { toast } from 'sonner';
+import { useTheme } from "next-themes";
 
 interface Props {
-    type: TransactionType;
+	type: TransactionType;
+	successCallback: (category: Category) => void;
 }
 
-function CreateCategoryDialog({type}: Props) {
-    const [open, setOpen] = useState(false);
-    const form = useForm<CreateCategorySchemaType>({
-        resolver: zodResolver(CreateCategorySchema),
-        defaultValues: {
-            type,
-        },
-    })
+function CreateCategoryDialog({ type, successCallback }: Props) {
+	const [open, setOpen] = useState(false);
+	const form = useForm<CreateCategorySchemaType>({
+		resolver: zodResolver(CreateCategorySchema),
+		defaultValues: {
+			type,
+		},
+	});
 
-	const queryClient = useQueryClient()
+	const queryClient = useQueryClient();
+	const theme = useTheme();
 
-	const {mutate, isPending} = useMutation({
+	const { mutate, isPending } = useMutation({
 		mutationFn: CreateCategory,
 		onSuccess: async (data: Category) => {
 			form.reset({
 				name: "",
 				icon: "",
 				type,
-			})
+			});
 
-		toast.success(`Category ${data.name} created successfully!`, {
-			id: "create-category"
-		})
+			toast.success(`Category ${data.name} created successfully!`, {
+				id: "create-category",
+			});
 
-		await queryClient.invalidateQueries({
-			queryKey: ["categories"]
-		})
+			successCallback(data);
 
-		setOpen((prev) => !prev)
+			await queryClient.invalidateQueries({
+				queryKey: ["categories"],
+			});
+
+			setOpen((prev) => !prev);
 		},
 		onError: (error: Error) => {
 			toast.error(error.message, {
-				id: "create-category"
-			})
-		}
-	})
+				id: "create-category",
+			});
+		},
+	});
 
 	const onSubmit = useCallback(
 		(values: CreateCategorySchemaType) => {
@@ -70,7 +75,7 @@ function CreateCategoryDialog({type}: Props) {
 		[mutate]
 	);
 
-  return (
+	return (
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger asChild>
 				<Button
@@ -107,10 +112,10 @@ function CreateCategoryDialog({type}: Props) {
 								<FormItem>
 									<FormLabel>Name</FormLabel>
 									<FormControl>
-										<Input {...field} />
+										<Input placeholder="Category" {...field} />
 									</FormControl>
 									<FormDescription>
-										Name of category(required)
+										This will how category will appear in the app
 									</FormDescription>
 								</FormItem>
 							)}
@@ -151,7 +156,7 @@ function CreateCategoryDialog({type}: Props) {
 													}}
 													emojiStyle={EmojiStyle.NATIVE}
 													lazyLoadEmojis={true}
-													theme={Theme.AUTO}
+													theme={theme.resolvedTheme as Theme}
 												/>
 											</PopoverContent>
 										</Popover>
@@ -178,7 +183,7 @@ function CreateCategoryDialog({type}: Props) {
 					</DialogClose>
 					<Button onClick={form.handleSubmit(onSubmit)} disabled={isPending}>
 						{!isPending && "Create"}
-						{isPending && <Loader2 className='animate-spin'/>}
+						{isPending && <Loader2 className="animate-spin" />}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
